@@ -146,8 +146,8 @@ textarea#prompt{min-height:110px;resize:none;font-size:17px;line-height:1.45;bor
 
 <div id="toast"></div>
 <script>
-const K={key:'rf_key',model:'rf_model',hist:'rf_hist'};
-const FALLBACK=['gemini-2.5-flash','gemini-2.0-flash','gemini-2.5-flash-lite','gemini-1.5-flash'];
+const K={key:'rf_key',model:'rf_model',models:'rf_models',hist:'rf_hist'};
+const FALLBACK=['gemini-3.5-flash-lite','gemini-3.8-flash','gemini-3.5-flash','gemini-3.1-flash-lite','gemini-flash-latest','gemini-2.5-flash'];
 const $=id=>document.getElementById(id);
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
 function load(){try{return JSON.parse(localStorage.getItem(K.hist)||'[]')}catch(e){return[]}}
@@ -161,8 +161,10 @@ $('savekey').onclick=()=>{
     .then(r=>{if(!r.ok)throw 0;return r.json()})
     .then(j=>{
       localStorage.setItem(K.key,k);
-      const names=(j.models||[]).map(m=>m.name.replace('models/',''));
-      const ok=names.find(n=>n.includes('2.5-flash')&&!n.includes('image')&&!n.includes('lite'))||names.find(n=>n.includes('flash'))||'gemini-2.5-flash';
+      const names=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace('models/','')).filter(n=>/flash/.test(n)&&!/image|tts|live|thinking|embedding|audio/.test(n));
+      const ordered=[...FALLBACK.filter(n=>names.includes(n)),...names.filter(n=>!FALLBACK.includes(n))];
+      localStorage.setItem(K.models,JSON.stringify(ordered));
+      const ok=ordered[0]||'gemini-3.5-flash-lite';
       localStorage.setItem(K.model,ok);
       enterApp();toast('kitchen is fired up');
     }).catch(()=>{$('setupmsg').textContent="that key didn't pass Google's door. paste it again exactly from AI Studio."});
@@ -229,7 +231,9 @@ async function forge(userPrompt){
   $('recipebox').style.display='none';
   startLoad();
   const key=localStorage.getItem(K.key);
-  let list=[];const saved=localStorage.getItem(K.model);if(saved)list.push(saved);FALLBACK.forEach(m=>{if(!list.includes(m))list.push(m)});
+  let list=[];const saved=localStorage.getItem(K.model);if(saved)list.push(saved);
+  try{JSON.parse(localStorage.getItem(K.models)||'[]').forEach(m=>{if(!list.includes(m))list.push(m)})}catch(e){}
+  FALLBACK.forEach(m=>{if(!list.includes(m))list.push(m)});
   let lastErr=null;
   for(const m of list){
     try{
@@ -250,7 +254,9 @@ async function forge(userPrompt){
   }
   stopLoad();
   $('err').style.display='block';
-  $('err').innerHTML='the kitchen hit a snag: '+(lastErr&&lastErr.message?esc(lastErr.message):'no answer')+'.<br>if it says 429 you have hit the free daily limit, wait for it to reset. if it says 400 or 401, check your key in settings.';
+  const msg=lastErr&&lastErr.message?lastErr.message:'no answer';
+  localStorage.removeItem(K.model);
+  $('err').innerHTML='the kitchen hit a snag: '+esc(msg)+'.<br>tap the gear and hit save to re-check your key, then try again. if it says 429 you have hit the free daily limit, wait for it to reset; if it says 400 or 401, check your key in settings.';
 }
 $('go').onclick=()=>forge();
 document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{$('prompt').value=c.dataset.p;$('prompt').focus()});
