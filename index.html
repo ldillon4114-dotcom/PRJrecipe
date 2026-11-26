@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Recipe Forge</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4ecdd;color:#2e2820;-webkit-font-smoothing:antialiased;min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+#app,#setup{max-width:680px;margin:0 auto;padding:20px 16px 70px}
+h1,h2,h3,.serif{font-family:Georgia,'Times New Roman',serif}
+#setup{padding-top:56px;text-align:center}
+.logo{font-size:42px;font-weight:bold;letter-spacing:1px;line-height:1.05}
+.logo span{color:#b3402a}
+.sub{margin:12px 0 30px;color:#6b6156;font-size:15px}
+.card{background:#fffdf6;border:1px solid #e5d9c3;border-radius:18px;padding:24px;text-align:left;box-shadow:0 3px 14px rgba(70,45,10,.07)}
+.card h2{font-size:20px;margin-bottom:6px}
+.card p{color:#6b6156;font-size:14px;margin-bottom:14px;line-height:1.45}
+input[type=text],input[type=password],textarea{width:100%;padding:13px 14px;border:1.5px solid #d8c9ae;border-radius:10px;font-size:16px;background:#fffef9;color:#2e2820;outline:none;font-family:inherit}
+input:focus,textarea:focus{border-color:#b3402a}
+.btn{display:inline-block;background:#2e2820;color:#f6efe3;border:none;border-radius:999px;padding:14px 28px;font-size:16px;font-weight:600;cursor:pointer;transition:transform .08s}
+.btn:active{transform:scale(.97)}
+.btn.red{background:#b3402a}
+.btn.ghost{background:transparent;color:#2e2820;border:1.5px solid #2e2820}
+.btn:disabled{opacity:.5}
+.muted{color:#8a7f70;font-size:13px;line-height:1.5}
+.row{display:flex;gap:10px;margin-top:16px}
+.row .btn{flex:1;text-align:center}
+.linklike{background:none;border:none;color:#b3402a;font-size:14px;cursor:pointer;text-decoration:underline;padding:0;font-family:inherit}
+header{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 18px}
+header .brand{font-size:26px;font-weight:bold;letter-spacing:.5px}
+header .brand span{color:#b3402a}
+.gear{background:none;border:1.5px solid #d8c9ae;border-radius:10px;font-size:18px;padding:6px 12px;cursor:pointer;color:#2e2820}
+/* composer */
+.promptwrap{position:relative}
+textarea#prompt{min-height:110px;resize:none;font-size:17px;line-height:1.45;border-radius:14px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}
+.chip{background:#fffdf6;border:1.5px solid #d8c9ae;color:#2e2820;border-radius:999px;padding:8px 14px;font-size:13.5px;cursor:pointer}
+.chip:active{background:#f0e4cd}
+.golabel{font-size:12px;letter-spacing:2px;color:#8a7f70;text-transform:uppercase;margin:22px 0 8px}
+/* loading */
+#loading{display:none;text-align:center;padding:44px 10px}
+.pot{font-size:56px;animation:sizzle 1s infinite alternate}
+@keyframes sizzle{from{transform:rotate(-8deg) scale(1)}to{transform:rotate(8deg) scale(1.06)}}
+#loadmsg{margin-top:14px;font-family:Georgia,serif;font-size:18px;font-style:italic;color:#6b6156}
+.bar{height:5px;background:#e5d9c3;border-radius:99px;margin:18px auto 0;max-width:280px;overflow:hidden}
+.bar i{display:block;height:100%;width:35%;background:#b3402a;border-radius:99px;animation:slide 1.6s infinite}
+@keyframes slide{0%{margin-left:-35%}100%{margin-left:100%}}
+/* recipe card */
+#recipebox{display:none}
+.rp{background:#fffdf6;border:1px solid #e5d9c3;border-radius:20px;overflow:hidden;box-shadow:0 6px 22px rgba(70,45,10,.09);animation:fadein .4s}
+@keyframes fadein{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+.rphead{background:linear-gradient(160deg,#b3402a,#8f2f1d);color:#fdf6ea;padding:26px 24px 20px}
+.rphead .tag{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;opacity:.85}
+.rphead h2{font-size:28px;margin:8px 0 10px;line-height:1.15}
+.rphead .blurb{font-size:14.5px;line-height:1.5;opacity:.92}
+.metarow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.metarow div{background:rgba(255,255,255,.16);border-radius:10px;padding:7px 12px;font-size:12.5px}
+.metarow b{display:block;font-size:14px}
+.rpbody{padding:22px 24px 26px}
+.sec{margin-bottom:22px}
+.sec h3{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#8a7f70;margin-bottom:12px;border-bottom:1px solid #ece1cb;padding-bottom:6px}
+.ingrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+@media(max-width:480px){.ingrid{grid-template-columns:1fr}}
+.ing{display:flex;gap:8px;font-size:15px;line-height:1.45;padding:7px 10px;background:#faf5e9;border-radius:10px}
+.ing b{color:#b3402a;white-space:nowrap;min-width:64px}
+.step{display:flex;gap:14px;margin-bottom:16px}
+.step .num{flex:none;width:32px;height:32px;border-radius:50%;background:#2e2820;color:#f6efe3;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:15px;margin-top:1px}
+.step p{font-size:15.5px;line-height:1.55}
+.tip{display:flex;gap:10px;font-size:14.5px;line-height:1.5;margin-bottom:10px;color:#54493c}
+.tip b{color:#c99a3f}
+.rpactions{display:flex;gap:10px;margin-top:18px}
+.rpactions .btn{flex:1;padding:13px 10px;font-size:14.5px}
+/* history */
+#histwrap{margin-top:36px}
+#histwrap h2{font-size:20px;margin-bottom:4px}
+.hsearch{margin:12px 0}
+.hlist{display:flex;flex-direction:column;gap:10px}
+.hitem{background:#fffdf6;border:1px solid #e5d9c3;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .08s}
+.hitem:active{transform:scale(.99)}
+.hitem .meta{flex:1;min-width:0}
+.hitem .meta h4{font-family:Georgia,serif;font-size:17px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hitem .meta span{font-size:12.5px;color:#8a7f70}
+.hdel{background:none;border:none;color:#c9b998;font-size:18px;cursor:pointer;padding:6px}
+.hempty{color:#8a7f70;font-size:14px;text-align:center;padding:20px;border:1.5px dashed #d8c9ae;border-radius:14px}
+/* toast */
+#toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(20px);background:#2e2820;color:#f6efe3;padding:11px 20px;border-radius:999px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:9}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#err{display:none;background:#fbeee9;border:1px solid #e8b8a6;color:#8f2f1d;border-radius:12px;padding:14px;font-size:14px;margin-top:14px;line-height:1.5}
+#backview{display:none}
+</style>
+</head>
+<body>
+<div id="setup">
+  <div class="logo">Recipe <span>Forge</span></div>
+  <p class="sub">Tell it anything. Get an exact, thorough recipe.</p>
+  <div class="card">
+    <h2>One-time setup</h2>
+    <p>Paste your free Google AI Studio key. It stays on your device only (saved in this browser, never sent anywhere but Google).</p>
+    <input id="keyin" type="password" placeholder="AIza... your Gemini key" autocomplete="off"/>
+    <input id="modelin" type="text" placeholder="model (leave blank for auto)" style="margin-top:10px" autocomplete="off"/>
+    <div class="row">
+      <button class="btn red" id="savekey">Fire up the kitchen</button>
+    </div>
+    <p class="muted" id="setupmsg" style="margin-top:12px"></p>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <div class="brand">Recipe <span>Forge</span></div>
+    <button class="gear" id="gear" title="settings">&#9881;&#65039;</button>
+  </header>
+
+  <div id="mainview">
+    <div class="promptwrap"><textarea id="prompt" placeholder="tell the chef what you want... any dish, any ingredients, any wild idea. e.g. 'make me a recipe out of hot cheetos, chicken and lime' or 'best crispy smash burger'"></textarea></div>
+    <div class="chips">
+      <button class="chip" data-p="use only what's in my fridge, make me something amazing">fridge raid</button>
+      <button class="chip" data-p="a high-protein dinner under 30 minutes">quick protein dinner</button>
+      <button class="chip" data-p="the most decadent dessert for one">dessert for one</button>
+      <button class="chip" data-p="late night snack, greasy and glorious">late night snack</button>
+      <button class="chip" data-p="surprise me with a dish nobody would expect">surprise me</button>
+    </div>
+    <button class="btn red" id="go" style="width:100%;font-size:17px">Forge the recipe</button>
+    <div id="err"></div>
+    <div id="loading">
+      <div class="pot">&#127859;&#65039;</div>
+      <div id="loadmsg">preheating the kitchen...</div>
+      <div class="bar"><i></i></div>
+    </div>
+    <div id="recipebox"></div>
+    <div id="histwrap">
+      <h2 class="serif">Your recipe book</h2>
+      <p class="muted">every recipe you forge is saved here, on your device</p>
+      <div class="hsearch"><input id="hsearch" type="text" placeholder="search your recipes..."/></div>
+      <div class="hlist" id="hlist"></div>
+    </div>
+  </div>
+
+  <div id="backview">
+    <button class="linklike" id="backbtn">&larr; back to the kitchen</button>
+    <div id="backcontent" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+const K={key:'rf_key',model:'rf_model',hist:'rf_hist'};
+const FALLBACK=['gemini-2.5-flash','gemini-2.0-flash','gemini-2.5-flash-lite','gemini-1.5-flash'];
+const $=id=>document.getElementById(id);
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
+function load(){try{return JSON.parse(localStorage.getItem(K.hist)||'[]')}catch(e){return[]}}
+function save(h){localStorage.setItem(K.hist,JSON.stringify(h))}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+$('savekey').onclick=()=>{
+  const k=$('keyin').value.trim();
+  $('setupmsg').textContent='checking the key...';
+  fetch('https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(k))
+    .then(r=>{if(!r.ok)throw 0;return r.json()})
+    .then(j=>{
+      localStorage.setItem(K.key,k);
+      const names=(j.models||[]).map(m=>m.name.replace('models/',''));
+      const ok=names.find(n=>n.includes('2.5-flash')&&!n.includes('image')&&!n.includes('lite'))||names.find(n=>n.includes('flash'))||'gemini-2.5-flash';
+      localStorage.setItem(K.model,ok);
+      enterApp();toast('kitchen is fired up');
+    }).catch(()=>{$('setupmsg').textContent="that key didn't pass Google's door. paste it again exactly from AI Studio."});
+};
+$('gear').onclick=()=>{$('app').hidden=true;$('setup').hidden=false;$('keyin').value=localStorage.getItem(K.key)||'';$('modelin').value=localStorage.getItem(K.model)||'';$('setupmsg').textContent='';};
+function enterApp(){$('setup').hidden=true;$('app').hidden=false;$('recipebox').style.display='none';renderHist();}
+const MSGS=['preheating the kitchen...','sharpening the knife...','folding in the good stuff...','tasting the sauce...','plating it up...'];
+let msgTimer=null;
+let backData=null;
+function startLoad(){let i=0;$('loading').style.display='block';$('err').style.display='none';$('go').disabled=true;$('loadmsg').textContent=MSGS[0];msgTimer=setInterval(()=>{i=(i+1)%MSGS.length;$('loadmsg').textContent=MSGS[i]},2200)}
+function stopLoad(){$('loading').style.display='none';$('go').disabled=false;clearInterval(msgTimer)}
+
+const SYS=`You are Chef Forge, a world-class professional chef. Invent the most delicious, exact and thoroughly detailed recipe for whatever the user asks for - any dish, any ingredients, any wild combination. It must genuinely work when cooked.
+Return ONLY valid JSON (no markdown, no code fences) exactly in this shape:
+{"title":string,"blurb":one sentence selling the dish,"difficulty":"Easy" or "Medium" or "Hard","servings":string like "4 servings","prep":string like "15 min","cook":string like "25 min","total":string like "40 min","ingredients":[{"amount":string with exact units,"item":string}],"steps":[string,...],"tips":[string,...]}
+Rules: exact measurements and units on every ingredient; steps in strict order, each one detailed and specific (temperatures, times, pan sizes, visual cues like "until golden, about 3 minutes"); 6 to 14 ingredients; 4 to 12 steps; 2 to 4 chef tips with real technique. User request: `;
+
+function parseRecipe(txt){
+  let t=txt.trim().replace(/^```(json)?/i,'').replace(/```$/,'').trim();
+  try{return JSON.parse(t)}catch(e){}
+  const m=t.match(/\{[\s\S]*\}/);if(m){try{return JSON.parse(m[0])}catch(e){}}
+  throw new Error('bad json');
+}
+function renderRecipe(r,full){
+  const d=full||r.data;
+  const ing=(d.ingredients||[]).map(i=>`<div class="ing"><b>${esc(i.amount||'')}</b><span>${esc(i.item||'')}</span></div>`).join('');
+  const steps=(d.steps||[]).map((s,n)=>`<div class="step"><div class="num">${n+1}</div><p>${esc(s)}</p></div>`).join('');
+  const tips=(d.tips||[]).map(t=>`<div class="tip"><b>&#9733;</b><span>${esc(t)}</span></div>`).join('');
+  return `<div class="rp">
+    <div class="rphead"><div class="tag">forged recipe</div><h2>${esc(d.title||'Untitled')}</h2><div class="blurb">${esc(d.blurb||'')}</div>
+      <div class="metarow">
+        <div><b>${esc(d.difficulty||'-')}</b>difficulty</div>
+        <div><b>${esc(d.servings||'-')}</b>serves</div>
+        <div><b>${esc(d.prep||'-')}</b>prep</div>
+        <div><b>${esc(d.cook||'-')}</b>cook</div>
+        <div><b>${esc(d.total||'-')}</b>total</div>
+      </div></div>
+    <div class="rpbody">
+      <div class="sec"><h3>Ingredients</h3><div class="ingrid">${ing}</div></div>
+      <div class="sec"><h3>Method</h3>${steps}</div>
+      ${tips?`<div class="sec"><h3>Chef's notes</h3>${tips}</div>`:''}
+      <div class="rpactions">
+        <button class="btn ghost" id="btnvar">another version</button>
+        <button class="btn" id="btncopy">copy recipe</button>
+        <button class="btn red" id="btnnew">new recipe</button>
+      </div>
+    </div></div>`;
+}
+function showRecipe(d,{entry=null}={}){
+  $('recipebox').innerHTML=renderRecipe(null,d);
+  $('recipebox').style.display='block';
+  const node=$('recipebox');
+  node.querySelector('#btncopy').onclick=()=>{
+    const lines=[d.title,'','Ingredients:',...(d.ingredients||[]).map(i=>`- ${i.amount||''} ${i.item||''}`).join('\n'),'\nMethod:',...(d.steps||[]).map((s,n)=>`${n+1}. ${s}`).join('\n'),'',...(d.tips||[]).length?['Chef notes:',...(d.tips||[]).map(t=>`- ${t}`).join('\n')]:[]].join('\n');
+    navigator.clipboard.writeText(lines).then(()=>toast('copied'),()=>toast('could not copy'));
+  };
+  node.querySelector('#btnvar').onclick=()=>forge($('prompt').value+'\n\n(Give me a DIFFERENT version than before - change the approach, technique or flavor direction.)');
+  node.querySelector('#btnnew').onclick=()=>{$('recipebox').style.display='none';$('prompt').value='';$('prompt').focus()};
+}
+async function forge(userPrompt){
+  const p=(userPrompt!==undefined?userPrompt:$('prompt').value).trim();
+  if(!p){toast('tell the chef what you want first');return}
+  if(userPrompt!==undefined)$('prompt').value=userPrompt;
+  $('recipebox').style.display='none';
+  startLoad();
+  const key=localStorage.getItem(K.key);
+  let list=[];const saved=localStorage.getItem(K.model);if(saved)list.push(saved);FALLBACK.forEach(m=>{if(!list.includes(m))list.push(m)});
+  let lastErr=null;
+  for(const m of list){
+    try{
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{role:'user',parts:[{text:SYS+p}]}],generationConfig:{temperature:0.9,responseMimeType:'application/json'}})});
+      if(!r.ok){lastErr=new Error('model '+m+' said '+r.status);continue}
+      const j=await r.json();
+      const txt=(j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts||[]).map(x=>x.text||'').join('');
+      if(!txt){lastErr=new Error('empty reply');continue}
+      const d=parseRecipe(txt);
+      localStorage.setItem(K.model,m);
+      const entry={id:Date.now(),ts:Date.now(),data:d};
+      const h=load();h.unshift(entry);save(h.slice(0,100));renderHist();
+      stopLoad();showRecipe(d,{entry});
+      return;
+    }catch(e){lastErr=e}
+  }
+  stopLoad();
+  $('err').style.display='block';
+  $('err').innerHTML='the kitchen hit a snag: '+(lastErr&&lastErr.message?esc(lastErr.message):'no answer')+'.<br>if it says 429 you have hit the free daily limit, wait for it to reset. if it says 400 or 401, check your key in settings.';
+}
+$('go').onclick=()=>forge();
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{$('prompt').value=c.dataset.p;$('prompt').focus()});
+$('hsearch').oninput=renderHist;
+function renderHist(){
+  const q=($('hsearch').value||'').toLowerCase();
+  const h=load().filter(e=>!q||JSON.stringify(e.data).toLowerCase().includes(q));
+  const el=$('hlist');
+  if(!h.length){el.innerHTML='<div class="hempty">'+(q?'nothing matches that search':'no recipes yet. forge your first one above.')+'</div>';return}
+  el.innerHTML=h.map(e=>`<div class="hitem" data-id="${e.id}"><div class="meta"><h4>${esc(e.data.title||'Untitled')}</h4><span>${esc(e.data.blurb||'')} &middot; ${new Date(e.ts).toLocaleDateString()}</span></div><button class="hdel" data-del="${e.id}" title="delete">&#10005;</button></div>`).join('');
+  el.querySelectorAll('.hitem').forEach(it=>it.onclick=ev=>{
+    if(ev.target.dataset.del)return;
+    const e=load().find(x=>String(x.id)===it.dataset.id);
+    if(e){backData=e.data;$('backview').style.display='block';$('mainview').style.display='none';$('backcontent').innerHTML=renderRecipe(null,e.data);wireBack();window.scrollTo(0,0)}
+  });
+  el.querySelectorAll('.hdel').forEach(b=>b.onclick=ev=>{ev.stopPropagation();const id=b.dataset.del;save(load().filter(x=>String(x.id)!==id));renderHist();toast('removed')});
+}
+function wireBack(){
+  $('backbtn').onclick=()=>{$('backview').style.display='none';$('mainview').style.display='block';window.scrollTo(0,0)};
+  const c=$('backcontent');
+  c.querySelector('#btncopy')&&(c.querySelector('#btncopy').onclick=()=>{
+    const d=backData;
+    if(d)navigator.clipboard.writeText(d.title+'\n\nIngredients:\n'+(d.ingredients||[]).map(i=>`- ${i.amount||''} ${i.item||''}`).join('\n')+'\n\nMethod:\n'+(d.steps||[]).map((s,n)=>`${n+1}. ${s}`).join('\n')).then(()=>toast('copied'),()=>toast('could not copy'));
+  });
+  const v=c.querySelector('#btnvar');if(v)v.onclick=()=>{$('backview').style.display='none';$('mainview').style.display='block';forge($('prompt').value+'\n\n(Give me a DIFFERENT version than before.)')};
+  const n=c.querySelector('#btnnew');if(n)n.onclick=()=>{$('backview').style.display='none';$('mainview').style.display='block';window.scrollTo(0,0)};
+}
+(function(){
+  const k=localStorage.getItem(K.key);
+  if(k){enterApp();$('keyin').value=k;$('modelin').value=localStorage.getItem(K.model)||''}
+})();
+</script>
+</body>
+</html>
