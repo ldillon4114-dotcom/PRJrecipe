@@ -94,7 +94,7 @@ textarea#prompt{min-height:110px;resize:none;font-size:17px;line-height:1.45;bor
 <body>
 <div id="setup">
   <div class="logo">Recipe <span>Forge</span></div>
-  <p class="sub">Tell it anything. Get an exact, thorough recipe.</p>
+  <p class="sub">Tell it anything. Get an exact, thorough recipe, audited by a second AI pass before it reaches you.</p>
   <div class="card">
     <h2>One-time setup</h2>
     <p>Paste your free Google AI Studio key. It stays on your device only (saved in this browser, never sent anywhere but Google).</p>
@@ -177,10 +177,12 @@ let backData=null;
 function startLoad(){let i=0;$('loading').style.display='block';$('err').style.display='none';$('go').disabled=true;$('loadmsg').textContent=MSGS[0];msgTimer=setInterval(()=>{i=(i+1)%MSGS.length;$('loadmsg').textContent=MSGS[i]},2200)}
 function stopLoad(){$('loading').style.display='none';$('go').disabled=false;clearInterval(msgTimer)}
 
-const SYS=`You are Chef Forge, a world-class professional chef. Invent the most delicious, exact and thoroughly detailed recipe for whatever the user asks for - any dish, any ingredients, any wild combination. It must genuinely work when cooked.
+const SYS=`You are Chef Forge, a world-class professional chef and recipe developer. Invent the most delicious, exact and thoroughly detailed recipe for whatever the user asks for - any dish, any ingredients, any wild combination. It must genuinely work when cooked by a home cook with standard equipment.
 Return ONLY valid JSON (no markdown, no code fences) exactly in this shape:
 {"title":string,"blurb":one sentence selling the dish,"difficulty":"Easy" or "Medium" or "Hard","servings":string like "4 servings","prep":string like "15 min","cook":string like "25 min","total":string like "40 min","ingredients":[{"amount":string with exact units,"item":string}],"steps":[string,...],"tips":[string,...]}
-Rules: exact measurements and units on every ingredient; steps in strict order, each one detailed and specific (temperatures, times, pan sizes, visual cues like "until golden, about 3 minutes"); 6 to 14 ingredients; 4 to 12 steps; 2 to 4 chef tips with real technique. User request: `;
+Rules: exact measurements and units on every ingredient, including salt, fat and leavener by weight where it matters; steps in strict order, each one detailed and specific (temperatures, times, pan or pot sizes, rack positions, visual and aroma cues like "until golden and it smells nutty, about 3 minutes"); give safe internal temperatures for meat, poultry and fish; make the step times add up to the total time; 6 to 14 ingredients; 4 to 12 steps; 2 to 4 chef tips with real technique. If the request is not edible or unsafe to eat, do not refuse: return the same JSON shape with a title that says that plainly and a safe, genuinely delicious alternative. User request: `;
+const QA_SYS=`You are Chef Inspector, a merciless test-kitchen editor and food scientist. You get a recipe as JSON. Audit it like a professional test kitchen would before printing it: every ingredient listed must actually be used in the steps, and every step must only use listed ingredients; oven and stove temperatures must be realistic for the pan size and method; cook times must be consistent with the quantities and with the stated total time; protein doneness temperatures must be food-safe; baking ratios must be plausible; seasoning must be balanced; nothing may be unsafe to eat. Fix every problem you find and make every measurement and instruction more precise.
+Return ONLY valid JSON, same shape as the input recipe but corrected, plus one extra field "checks": an array of 3 to 6 short strings, each naming a specific check you verified, written like "325F oven suits an 8x4 loaf pan" or "chicken cooked to 165F internal". Recipe JSON to audit: `;
 
 function parseRecipe(txt){
   let t=txt.trim().replace(/^```(json)?/i,'').replace(/```$/,'').trim();
@@ -193,6 +195,7 @@ function renderRecipe(r,full){
   const ing=(d.ingredients||[]).map(i=>`<div class="ing"><b>${esc(i.amount||'')}</b><span>${esc(i.item||'')}</span></div>`).join('');
   const steps=(d.steps||[]).map((s,n)=>`<div class="step"><div class="num">${n+1}</div><p>${esc(s)}</p></div>`).join('');
   const tips=(d.tips||[]).map(t=>`<div class="tip"><b>&#9733;</b><span>${esc(t)}</span></div>`).join('');
+      const checks=(d.checks||[]).map(c=>`<div class="tip"><b>&#10003;</b><span>${esc(c)}</span></div>`).join('');
   return `<div class="rp">
     <div class="rphead"><div class="tag">forged recipe</div><h2>${esc(d.title||'Untitled')}</h2><div class="blurb">${esc(d.blurb||'')}</div>
       <div class="metarow">
@@ -206,6 +209,7 @@ function renderRecipe(r,full){
       <div class="sec"><h3>Ingredients</h3><div class="ingrid">${ing}</div></div>
       <div class="sec"><h3>Method</h3>${steps}</div>
       ${tips?`<div class="sec"><h3>Chef's notes</h3>${tips}</div>`:''}
+      ${checks?`<div class="sec"><h3>Chef's double-check</h3>${checks}</div>`:''}
       <div class="rpactions">
         <button class="btn ghost" id="btnvar">another version</button>
         <button class="btn" id="btncopy">copy recipe</button>
@@ -218,7 +222,7 @@ function showRecipe(d,{entry=null}={}){
   $('recipebox').style.display='block';
   const node=$('recipebox');
   node.querySelector('#btncopy').onclick=()=>{
-    const lines=[d.title,'','Ingredients:',...(d.ingredients||[]).map(i=>`- ${i.amount||''} ${i.item||''}`).join('\n'),'\nMethod:',...(d.steps||[]).map((s,n)=>`${n+1}. ${s}`).join('\n'),'',...(d.tips||[]).length?['Chef notes:',...(d.tips||[]).map(t=>`- ${t}`).join('\n')]:[]].join('\n');
+    const lines=[d.title,'','Ingredients:',...(d.ingredients||[]).map(i=>`- ${i.amount||''} ${i.item||''}`).join('\n'),'\nMethod:',...(d.steps||[]).map((s,n)=>`${n+1}. ${s}`).join('\n'),'',...(d.tips||[]).length?['Chef notes:',...(d.tips||[]).map(t=>`- ${t}`).join('\n')]:[],...(d.checks||[]).length?['','Quality checks:',...(d.checks||[]).map(c=>`- ${c}`).join('\n')]:[]].join('\n');
     navigator.clipboard.writeText(lines).then(()=>toast('copied'),()=>toast('could not copy'));
   };
   node.querySelector('#btnvar').onclick=()=>forge($('prompt').value+'\n\n(Give me a DIFFERENT version than before - change the approach, technique or flavor direction.)');
@@ -231,9 +235,9 @@ async function forge(userPrompt){
   $('recipebox').style.display='none';
   startLoad();
   const key=localStorage.getItem(K.key);
-  let list=[];const saved=localStorage.getItem(K.model);if(saved)list.push(saved);
-  try{JSON.parse(localStorage.getItem(K.models)||'[]').forEach(m=>{if(!list.includes(m))list.push(m)})}catch(e){}
+  let list=[];const saved=localStorage.getItem(K.model);if(saved&&/^gemini-(3|flash)/.test(saved))list.push(saved);
   FALLBACK.forEach(m=>{if(!list.includes(m))list.push(m)});
+  try{JSON.parse(localStorage.getItem(K.models)||'[]').forEach(m=>{if(!list.includes(m))list.push(m)})}catch(e){}
   let lastErr=null;
   for(const m of list){
     try{
@@ -244,7 +248,11 @@ async function forge(userPrompt){
       const j=await r.json();
       const txt=(j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts||[]).map(x=>x.text||'').join('');
       if(!txt){lastErr=new Error('empty reply');continue}
-      const d=parseRecipe(txt);
+      let d=parseRecipe(txt);
+      try{
+        const r2=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:[{text:QA_SYS+JSON.stringify(d)}]}],generationConfig:{temperature:0.3,responseMimeType:'application/json'}})});
+        if(r2.ok){const j2=await r2.json();const t2=(j2&&j2.candidates&&j2.candidates[0]&&j2.candidates[0].content&&j2.candidates[0].content.parts||[]).map(x=>x.text||'').join('');if(t2){const d2=parseRecipe(t2);if(d2&&d2.title&&d2.ingredients)d=d2;}}
+      }catch(e2){}
       localStorage.setItem(K.model,m);
       const entry={id:Date.now(),ts:Date.now(),data:d};
       const h=load();h.unshift(entry);save(h.slice(0,100));renderHist();
